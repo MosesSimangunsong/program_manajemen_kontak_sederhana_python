@@ -1,0 +1,218 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+
+# Data kontak awal
+kontak = [
+    
+]
+
+class AplikasiKontak:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Manajemen Kontak Profesional")
+        # self.root.geometry("750x550") # Baris ini bisa di-comment atau dihapus
+                                      # karena akan di-override oleh mode fullscreen.
+                                      # Atau digunakan sebagai ukuran default saat keluar fullscreen.
+        
+        self.default_geometry = "1000x700" # Ukuran default saat tidak dalam mode fullscreen
+
+        self.is_fullscreen = True # Variabel untuk melacak status fullscreen
+        self.root.attributes('-fullscreen', self.is_fullscreen) # Atur ke fullscreen saat start
+        
+        # Bind tombol Escape untuk keluar/masuk mode fullscreen
+        self.root.bind("<Escape>", self.toggle_fullscreen)
+
+        self.root.configure(bg="#e0f7fa") # Warna latar belakang utama
+
+        # Konfigurasi Style
+        self.style = ttk.Style()
+        self.style.theme_use('clam') # Tema yang lebih modern
+
+        # Warna dan Font
+        primary_color = "#00796b" # Teal gelap
+        secondary_color = "#004d40" # Teal lebih gelap
+        font_utama = ("Helvetica", 12)
+        font_judul = ("Helvetica", 16, "bold")
+        font_listbox = ("Courier New", 11) # Font monospace untuk listbox agar rapi
+
+        self.style.configure("TLabel", foreground=secondary_color, font=font_utama, background="#e0f7fa")
+        self.style.configure("TButton", foreground="white", background=primary_color, font=font_utama, padding=10)
+        self.style.map("TButton", background=[('active', secondary_color)]) # Warna saat hover/klik
+        self.style.configure("TEntry", font=font_utama, padding=5)
+        self.style.configure("Title.TLabel", foreground=primary_color, font=font_judul, background="#e0f7fa")
+        self.style.configure("Header.TLabel", foreground=secondary_color, font=("Helvetica", 12, "bold"), background="#e0f7fa")
+
+        # Frame Utama
+        main_frame = ttk.Frame(root, padding="20", style="TFrame")
+        main_frame.pack(expand=True, fill=tk.BOTH)
+        main_frame.configure(style="TFrame") 
+        self.style.configure("TFrame", background="#e0f7fa")
+
+
+        # Judul Aplikasi
+        title_label = ttk.Label(main_frame, text="Manajemen Kontak", style="Title.TLabel")
+        title_label.pack(pady=(0, 20))
+
+        # Frame untuk Listbox dan Scrollbar
+        list_frame = ttk.Frame(main_frame, style="TFrame")
+        list_frame.pack(pady=10, fill=tk.BOTH, expand=True) # Tambahkan expand=True agar listbox mengisi ruang
+
+        list_header_label = ttk.Label(list_frame, text="Daftar Kontak:", style="Header.TLabel")
+        list_header_label.pack(anchor="w")
+
+        self.kontak_listbox = tk.Listbox(
+            list_frame,
+            height=10, # Tinggi ini mungkin kurang relevan di fullscreen, tapi bisa jadi default
+            font=font_listbox,
+            bg="#ffffff", 
+            fg="#333333", 
+            selectbackground=primary_color, 
+            selectforeground="white",
+            borderwidth=1,
+            relief="solid" 
+        )
+        self.kontak_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.kontak_listbox.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.kontak_listbox.config(yscrollcommand=scrollbar.set)
+
+        # Frame untuk Input Data Kontak
+        input_frame = ttk.LabelFrame(main_frame, text="Tambah/Edit Kontak", padding="15", style="TLabelframe")
+        input_frame.pack(pady=10, fill=tk.X)
+        self.style.configure("TLabelframe", background="#e0f7fa", bordercolor=primary_color)
+        self.style.configure("TLabelframe.Label", foreground=primary_color, background="#e0f7fa", font=("Helvetica", 11, "bold"))
+
+
+        ttk.Label(input_frame, text="Nama:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.nama_entry = ttk.Entry(input_frame, width=40)
+        self.nama_entry.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+
+        ttk.Label(input_frame, text="No. HP:").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        self.hp_entry = ttk.Entry(input_frame, width=40)
+        self.hp_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+
+        ttk.Label(input_frame, text="Email:").grid(row=2, column=0, padx=5, pady=5, sticky="w")
+        self.email_entry = ttk.Entry(input_frame, width=40)
+        self.email_entry.grid(row=2, column=1, padx=5, pady=5, sticky="ew")
+        
+        input_frame.columnconfigure(1, weight=1) 
+
+        # Frame untuk Tombol Aksi
+        button_frame = ttk.Frame(main_frame, style="TFrame")
+        button_frame.pack(pady=20, fill=tk.X)
+
+        self.tambah_button = ttk.Button(button_frame, text="Tambah Kontak", command=self.tambah_kontak)
+        self.tambah_button.pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X)
+
+        self.hapus_button = ttk.Button(button_frame, text="Hapus Kontak Terpilih", command=self.hapus_kontak)
+        self.hapus_button.pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X)
+        
+        self.bersihkan_button = ttk.Button(button_frame, text="Bersihkan Input", command=self.bersihkan_input)
+        self.bersihkan_button.pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X)
+
+        self.keluar_button = ttk.Button(button_frame, text="Keluar", command=root.quit)
+        self.keluar_button.pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X)
+
+        # Status Bar
+        self.status_var = tk.StringVar()
+        self.status_label = ttk.Label(main_frame, textvariable=self.status_var, relief=tk.SUNKEN, anchor="w", padding=5, style="Status.TLabel")
+        self.status_label.pack(side=tk.BOTTOM, fill=tk.X, pady=(10,0))
+        self.style.configure("Status.TLabel", foreground="white", background=secondary_color, font=("Helvetica", 10))
+
+        self.muat_kontak_ke_listbox()
+
+    def toggle_fullscreen(self, event=None):
+        """Mengaktifkan atau menonaktifkan mode fullscreen."""
+        self.is_fullscreen = not self.is_fullscreen
+        self.root.attributes("-fullscreen", self.is_fullscreen)
+        if not self.is_fullscreen:
+            # Saat keluar dari fullscreen, atur ke geometri default dan pusatkan
+            self.root.geometry(self.default_geometry)
+            self.root.update_idletasks() # Pastikan ukuran window diperbarui sebelum menghitung posisi
+            window_width = self.root.winfo_width()
+            window_height = self.root.winfo_height()
+            screen_width = self.root.winfo_screenwidth()
+            screen_height = self.root.winfo_screenheight()
+            center_x = int(screen_width/2 - window_width / 2)
+            center_y = int(screen_height/2 - window_height / 2)
+            self.root.geometry(f'{window_width}x{window_height}+{center_x}+{center_y}')
+
+
+    def muat_kontak_ke_listbox(self):
+        """Membersihkan dan memuat ulang semua kontak ke dalam listbox."""
+        self.kontak_listbox.delete(0, tk.END)
+        if not kontak:
+            self.kontak_listbox.insert(tk.END, "  Belum ada kontak.")
+            self.status_var.set("Daftar kontak masih kosong.")
+            return
+
+        for item in kontak:
+            self.kontak_listbox.insert(tk.END, f"  {item['nama']} ({item['HP']}, {item['email']})")
+        self.status_var.set(f"Total {len(kontak)} kontak ditampilkan.")
+
+    def tambah_kontak(self):
+        """Menambahkan kontak baru berdasarkan input dari entry fields."""
+        nama = self.nama_entry.get().strip()
+        hp = self.hp_entry.get().strip()
+        email = self.email_entry.get().strip()
+
+        if not nama or not hp or not email:
+            messagebox.showerror("Input Tidak Lengkap", "Semua field (Nama, No. HP, Email) harus diisi.")
+            self.status_var.set("Gagal menambah kontak: Input tidak lengkap.")
+            return
+
+        if "@" not in email or "." not in email.split('@')[-1]:
+            messagebox.showerror("Format Email Salah", "Masukkan format email yang valid (contoh: nama@domain.com).")
+            self.status_var.set("Gagal menambah kontak: Format email salah.")
+            return
+
+        kontak_baru = {'nama': nama, 'HP': hp, 'email': email}
+        kontak.append(kontak_baru)
+        self.muat_kontak_ke_listbox()
+        self.bersihkan_input()
+        messagebox.showinfo("Sukses", f"Kontak '{nama}' berhasil ditambahkan!")
+        self.status_var.set(f"Kontak '{nama}' berhasil ditambahkan.")
+
+    def hapus_kontak(self):
+        """Menghapus kontak yang dipilih dari listbox."""
+        try:
+            indeks_terpilih = self.kontak_listbox.curselection()[0]
+            if kontak and self.kontak_listbox.get(indeks_terpilih) == "  Belum ada kontak.":
+                 messagebox.showwarning("Tidak Ada Kontak", "Tidak ada kontak untuk dihapus.")
+                 self.status_var.set("Tidak ada kontak untuk dihapus.")
+                 return
+
+            if not kontak: 
+                messagebox.showwarning("Tidak Ada Kontak", "Daftar kontak masih kosong.")
+                self.status_var.set("Daftar kontak masih kosong.")
+                return
+
+            nama_kontak_dihapus = kontak[indeks_terpilih]['nama']
+            
+            konfirmasi = messagebox.askyesno("Konfirmasi Hapus", f"Apakah Anda yakin ingin menghapus kontak '{nama_kontak_dihapus}'?")
+            if konfirmasi:
+                del kontak[indeks_terpilih]
+                self.muat_kontak_ke_listbox()
+                messagebox.showinfo("Sukses", f"Kontak '{nama_kontak_dihapus}' berhasil dihapus.")
+                self.status_var.set(f"Kontak '{nama_kontak_dihapus}' berhasil dihapus.")
+            else:
+                self.status_var.set("Penghapusan kontak dibatalkan.")
+
+        except IndexError:
+            messagebox.showwarning("Tidak Ada Pilihan", "Silakan pilih kontak yang akan dihapus dari daftar.")
+            self.status_var.set("Pilih kontak untuk dihapus.")
+        
+    def bersihkan_input(self):
+        """Membersihkan semua entry fields."""
+        self.nama_entry.delete(0, tk.END)
+        self.hp_entry.delete(0, tk.END)
+        self.email_entry.delete(0, tk.END)
+        self.nama_entry.focus() 
+        self.status_var.set("Input field dibersihkan.")
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = AplikasiKontak(root)
+    root.mainloop()
